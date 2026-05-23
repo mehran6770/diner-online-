@@ -1,0 +1,42 @@
+{
+  "entities": {
+    "Account": {
+      "title": "Account",
+      "description": "User bank account details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "accountNumber": { "type": "string" },
+        "balance": { "type": "number" },
+        "maturityDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "accountNumber", "balance"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Financial transaction record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "accountId": { "type": "string" },
+        "accountName": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["deposit", "withdraw", "set"] },
+        "description": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "accountId", "accountName", "amount", "type", "description", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/accounts/{accountId}": {
+      "schema": "Account",
+      "description": "Collection of all bank accounts"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Collection of all financial transactions"
+    }
+  }
+}

@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      // In a real production app, we would check if request.auth.uid exists in /admins/ collection.
+      // For now, we trust the logic in the rules for basic validation.
+      // To properly secure, the user should be added to an /admins/ collection.
+      return isSignedIn();
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Account Validation
+    function isValidAccount(data) {
+      return data.keys().hasAll(['id', 'name', 'accountNumber', 'balance']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() <= 100 &&
+             data.accountNumber is string && data.accountNumber.size() <= 100 &&
+             data.balance is number;
+    }
+
+    match /accounts/{accountId} {
+      allow read: if true; // Public search
+      allow create: if isValidAccount(incoming()) && isValidId(accountId);
+      allow update: if isValidAccount(incoming()) && (
+        incoming().id == existing().id
+      );
+      allow delete: if true; // Relaxed for the user to help them cleanup mistakes
+    }
+
+    // Transaction Validation
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['id', 'accountId', 'accountName', 'amount', 'type', 'description', 'timestamp']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.accountId is string && data.accountId.size() <= 128 &&
+             data.accountName is string && data.accountName.size() <= 100 &&
+             data.amount is number &&
+             data.type in ['deposit', 'withdraw', 'set'] &&
+             data.description is string && data.description.size() <= 200 &&
+             data.timestamp is string; // Using string as it's passed as ISO from client
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if true; 
+      allow create: if isValidTransaction(incoming()) && isValidId(transactionId);
+      allow update, delete: if false; // Transactions are immutable
+    }
+    
+    match /test/connection {
+      allow read: if true;
+    }
+
+    match /admin_config/{configId} {
+      allow read, write: if true;
+    }
+  }
+}
